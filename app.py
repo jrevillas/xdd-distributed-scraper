@@ -1,6 +1,7 @@
 import os
 
 from flask import Flask, jsonify, request
+import redis
 
 from tasks import xdd_login
 
@@ -14,16 +15,16 @@ if XDD_PASSWORD == None:
     print("XDD_PASSWORD is not set, exiting...")
     quit()
 
-if not "CELERY_BACKEND" in os.environ:
-    print("CELERY_BACKEND is not set, exiting...")
+if not "CELERY_BROKER" in os.environ:
+    print("CELERY_BROKER is not set, exiting...")
     quit()
 
-processed_chapters = 0
-processed_links = 0
-processed_seasons = 0
-processed_tv_shows = 0
-server_is_busy = False
-server_logs = []
+db = redis.StrictRedis(decode_responses=True)
+db.set("is_server_busy", "0")
+db.set("processed_chapters", "0")
+db.set("processed_links", "0")
+db.set("processed_seasons", "0")
+db.set("processed_tv_shows", "0")
 
 app = Flask(__name__)
 
@@ -41,10 +42,9 @@ def index_handler():
 # disponible cuando termina de procesar la peticion.
 @app.route("/job", methods=['POST'])
 def job_handler():
-    global server_is_busy
-    if server_is_busy:
+    if db.get("is_server_busy") == "1":
         return jsonify(status="busy")
-    server_is_busy = True
+    db.set("is_server_busy", "1")
     xdd_login.delay(XDD_USERNAME, XDD_PASSWORD)
     return jsonify(request.get_json())
 
@@ -53,10 +53,10 @@ def job_handler():
 @app.route("/stats")
 def stats_handler():
     return jsonify(
-        processed_chapters=processed_chapters,
-        processed_links=processed_links,
-        processed_seasons=processed_seasons,
-        processed_tv_shows=processed_tv_shows)
+        processed_chapters=db.get("processed_chapters"),
+        processed_links=db.get("processed_links"),
+        processed_seasons=db.get("processed_seasons"),
+        processed_tv_shows=db.get("processed_tv_shows"))
 
 if __name__ == "__main__":
     app.run()
