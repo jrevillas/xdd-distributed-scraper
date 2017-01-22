@@ -2,6 +2,8 @@ import os
 
 from flask import Flask, jsonify, request
 
+from tasks import xdd_login
+
 XDD_USERNAME = os.environ.get("XDD_USERNAME")
 if XDD_USERNAME == None:
     print("XDD_USERNAME is not set, exiting...")
@@ -10,6 +12,10 @@ if XDD_USERNAME == None:
 XDD_PASSWORD = os.environ.get("XDD_PASSWORD")
 if XDD_PASSWORD == None:
     print("XDD_PASSWORD is not set, exiting...")
+    quit()
+
+if not "CELERY_BACKEND" in os.environ:
+    print("CELERY_BACKEND is not set, exiting...")
     quit()
 
 processed_chapters = 0
@@ -35,10 +41,11 @@ def index_handler():
 # disponible cuando termina de procesar la peticion.
 @app.route("/job", methods=['POST'])
 def job_handler():
+    global server_is_busy
     if server_is_busy:
         return jsonify(status="busy")
-    global server_is_busy
     server_is_busy = True
+    xdd_login.delay(XDD_USERNAME, XDD_PASSWORD)
     return jsonify(request.get_json())
 
 # Muestra el numero de series, temporadas, capitulos y enlaces que se han
