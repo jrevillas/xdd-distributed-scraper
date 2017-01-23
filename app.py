@@ -3,7 +3,7 @@ import os
 from flask import Flask, jsonify, request
 import redis
 
-from tasks import xdd_login
+from tasks import scrap_tv_show
 
 XDD_USERNAME = os.environ.get("XDD_USERNAME")
 if XDD_USERNAME == None:
@@ -45,7 +45,7 @@ def job_handler():
     if db.get("is_server_busy") == "1":
         return jsonify(status="busy")
     db.set("is_server_busy", "1")
-    xdd_login.delay(XDD_USERNAME, XDD_PASSWORD)
+    scrap_tv_show.delay(XDD_USERNAME, XDD_PASSWORD, "stargate-atlantis")
     return jsonify(request.get_json())
 
 # Muestra el numero de series, temporadas, capitulos y enlaces que se han
