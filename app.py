@@ -35,11 +35,12 @@ def index_handler():
         application="xdd-distributed-scraper",
         version="0.1")
 
-# Recibe la informacion necesaria sobre una serie para poder extraer las
-# temporadas, capitulos y enlaces de los mismos. Cuando recibe una peticion
-# valida cambia el estado del servicio a ocupado para evitar que se dispare el
-# numero de conexiones salientes. Vuelve a cambiar el estado del servicio a
-# disponible cuando termina de procesar la peticion.
+'''
+Recibe la informacion necesaria sobre una serie para poder extraer las
+temporadas, capitulos y enlaces de los mismos. Cuando recibe una peticion valida
+cambia el estado del servicio a ocupado para evitar que se dispare el numero de
+conexiones salientes.
+'''
 @app.route("/job", methods=['POST'])
 def job_handler():
     if db.get("is_server_busy") == "1":
@@ -48,8 +49,10 @@ def job_handler():
     scrap_tv_show.delay(XDD_USERNAME, XDD_PASSWORD, "stargate-atlantis")
     return jsonify(request.get_json())
 
-# Muestra el numero de series, temporadas, capitulos y enlaces que se han
-# procesado desde el arranque de la aplicacion.
+'''
+Muestra el numero de series, temporadas, capitulos y enlaces que se han
+procesado desde el arranque de la aplicacion.
+'''
 @app.route("/stats")
 def stats_handler():
     return jsonify(

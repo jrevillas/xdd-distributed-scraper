@@ -22,17 +22,21 @@ def scrap_tv_show(username, password, tv_show):
     current_season = 1
     current_chapter = 1
     for season_html in find_seasons(session, tv_show):
+        season_start = time.perf_counter()
         for a in season_html.find_all("button", {"class": "big defaultPopup"}, href=True):
+            chapter_start = time.perf_counter()
             print("scrap_tv_show(...) " + tv_show + "-" + str(current_season) + "-" + str(current_chapter))
             process_chapter(session, a["href"])
+            print("time spent on last chapter: {0:.3f}".format(time.perf_counter() - chapter_start))
             save_status(tv_show, current_season, current_chapter)
             current_chapter += 1
+        print("time spent on last season: {0:.3f}".format(time.perf_counter() - season_start))
         current_season += 1
         current_chapter = 1
     db.set("is_server_busy", "0")
 
 '''
-Actualiza el estado de la serie con la referencia al ultimo capitulo que se ha
+Actualiza el estado de la serie con una referencia al ultimo capitulo que se ha
 procesado. Habilita la posibilidad de reanudar procesos en sucesivas ejecuciones
 desde AWS Lambda.
 '''
