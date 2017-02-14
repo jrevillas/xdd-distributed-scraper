@@ -1,5 +1,6 @@
 beautifulsoup4
 flask
+lxml
 redis
 requests
 wheel

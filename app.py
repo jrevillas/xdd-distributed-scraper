@@ -1,5 +1,5 @@
 import os
-import threading
+from threading import Thread
 
 from flask import Flask, jsonify, request
 import redis
@@ -42,11 +42,11 @@ def job_handler():
     if db.get("is_server_busy") == "1":
         return jsonify(status="busy")
     db.set("is_server_busy", "1")
-    thread = Thread(
+    t = Thread(
         target=scrap_tv_show,
         args=[XDD_USERNAME, XDD_PASSWORD, "stargate-atlantis"],
         daemon=True)
-    thread.start()
+    t.start()
     return jsonify(request.get_json())
 
 '''
