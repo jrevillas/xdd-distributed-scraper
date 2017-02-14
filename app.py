@@ -1,4 +1,5 @@
 import os
+import threading
 
 from flask import Flask, jsonify, request
 import redis
@@ -15,10 +16,6 @@ if XDD_PASSWORD == None:
     print("XDD_PASSWORD is not set, exiting...")
     quit()
 
-if not "CELERY_BROKER" in os.environ:
-    print("CELERY_BROKER is not set, exiting...")
-    quit()
-
 db = redis.StrictRedis(decode_responses=True)
 db.set("is_server_busy", "0")
 db.set("processed_chapters", "0")
@@ -28,7 +25,6 @@ db.set("processed_tv_shows", "0")
 
 app = Flask(__name__)
 
-# Muestra el nombre de la aplicacion y su version.
 @app.route("/")
 def index_handler():
     return jsonify(
@@ -46,7 +42,11 @@ def job_handler():
     if db.get("is_server_busy") == "1":
         return jsonify(status="busy")
     db.set("is_server_busy", "1")
-    scrap_tv_show.delay(XDD_USERNAME, XDD_PASSWORD, "stargate-atlantis")
+    thread = Thread(
+        target=scrap_tv_show,
+        args=[XDD_USERNAME, XDD_PASSWORD, "stargate-atlantis"],
+        daemon=True)
+    thread.start()
     return jsonify(request.get_json())
 
 '''

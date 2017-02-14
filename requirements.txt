@@ -1,7 +1,5 @@
 beautifulsoup4
-celery
 flask
-pymongo
 redis
 requests
 wheel
