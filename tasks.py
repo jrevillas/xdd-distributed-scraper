@@ -5,7 +5,9 @@ from bs4 import BeautifulSoup
 import redis
 import requests
 
-db = redis.StrictRedis(decode_responses=True)
+REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+
+db = redis.from_url(REDIS_URL, decode_responses=True)
 
 XDD_ROOT = "http://www.pordede.com"
 XDD_LOGIN_ENDPOINT = XDD_ROOT + "/site/login"

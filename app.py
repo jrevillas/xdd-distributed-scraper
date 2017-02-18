@@ -16,7 +16,9 @@ if XDD_PASSWORD == None:
     print("XDD_PASSWORD is not set, exiting...")
     quit()
 
-db = redis.StrictRedis(decode_responses=True)
+REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+
+db = redis.from_url(REDIS_URL, decode_responses=True)
 db.set("is_server_busy", "0")
 db.set("processed_chapters", "0")
 db.set("processed_links", "0")
@@ -56,10 +58,11 @@ procesado desde el arranque de la aplicacion.
 @app.route("/stats")
 def stats_handler():
     return jsonify(
-        processed_chapters=db.get("processed_chapters"),
-        processed_links=db.get("processed_links"),
-        processed_seasons=db.get("processed_seasons"),
-        processed_tv_shows=db.get("processed_tv_shows"))
+        processed_chapters=int(db.get("processed_chapters")),
+        processed_links=int(db.get("processed_links")),
+        processed_seasons=int(db.get("processed_seasons")),
+        processed_tv_shows=int(db.get("processed_tv_shows")))
 
 if __name__ == "__main__":
-    app.run()
+    port = int(os.environ.get("PORT", 5000))
+    app.run(port=port)
