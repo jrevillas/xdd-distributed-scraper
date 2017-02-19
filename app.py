@@ -16,9 +16,17 @@ if XDD_PASSWORD == None:
     print("XDD_PASSWORD is not set, exiting...")
     quit()
 
+if not "MONGODB_URI" in os.environ:
+    print("MONGODB_URI is not set, exiting...")
+    quit()
+
+if not "MONGODB_DATABASE" in os.environ:
+    print("MONGODB_DATABASE is not set, exiting...")
+    quit()
+
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 
-db = redis.from_url(REDIS_URL, decode_responses=True)
+db = redis.StrictRedis.from_url(REDIS_URL, decode_responses=True)
 db.set("is_server_busy", "0")
 db.set("processed_chapters", "0")
 db.set("processed_links", "0")
@@ -42,7 +50,7 @@ conexiones salientes.
 @app.route("/job", methods=['POST'])
 def job_handler():
     if db.get("is_server_busy") == "1":
-        return jsonify(status="busy")
+        return jsonify(status="busy"), 503
     db.set("is_server_busy", "1")
     t = Thread(
         target=scrap_tv_show,

@@ -2,6 +2,7 @@ beautifulsoup4
 flask
 gunicorn
 lxml
+pymongo
 redis
 requests
 wheel
