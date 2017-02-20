@@ -2,6 +2,14 @@ import os
 
 from pymongo import MongoClient
 
+if not "MONGODB_URI" in os.environ:
+    print("MONGODB_URI is not set, exiting...")
+    quit()
+
+if not "MONGODB_DATABASE" in os.environ:
+    print("MONGODB_DATABASE is not set, exiting...")
+    quit()
+
 client = MongoClient(os.environ.get("MONGODB_URI"))
 db = client[os.environ.get("MONGODB_DATABASE")]
 
@@ -9,7 +17,7 @@ episodes = db["xdd_episodes"]
 tv_shows = db["xdd_tv_shows"]
 
 def add_episode(tv_show_name):
-    episode_id = episodes.insert_one({"mirrors": []})
+    episode_id = episodes.insert_one({"mirrors": []}).inserted_id
     tv_show = get_tv_show(tv_show_name)
     tv_show["seasons"][len(tv_show["seasons"]) - 1].append({
         "id": episode_id,
@@ -32,10 +40,10 @@ def get_episode(tv_show_name, season_number, episode_number):
     tv_show = get_tv_show(tv_show_name)
     if season_index - len(tv_show["seasons"]) == 0:
         add_season(tv_show_name)
-        get_episode(tv_show_name, season_number, episode_number)
+        return get_episode(tv_show_name, season_number, episode_number)
     if episode_index - len(tv_show["seasons"][season_index]) == 0:
         add_episode(tv_show_name)
-        get_episode(tv_show_name, season_number, episode_number)
+        return get_episode(tv_show_name, season_number, episode_number)
     episode_id = tv_show["seasons"][season_index][episode_index]["id"]
     return episodes.find_one({"_id": episode_id})
 

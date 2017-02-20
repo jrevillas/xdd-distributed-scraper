@@ -16,14 +16,6 @@ if XDD_PASSWORD == None:
     print("XDD_PASSWORD is not set, exiting...")
     quit()
 
-if not "MONGODB_URI" in os.environ:
-    print("MONGODB_URI is not set, exiting...")
-    quit()
-
-if not "MONGODB_DATABASE" in os.environ:
-    print("MONGODB_DATABASE is not set, exiting...")
-    quit()
-
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 
 db = redis.StrictRedis.from_url(REDIS_URL, decode_responses=True)
@@ -39,7 +31,7 @@ app = Flask(__name__)
 def index_handler():
     return jsonify(
         application="xdd-distributed-scraper",
-        version="0.1")
+        version="2.0")
 
 '''
 Recibe la informacion necesaria sobre una serie para poder extraer las
