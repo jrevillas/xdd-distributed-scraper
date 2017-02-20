@@ -5,6 +5,8 @@ from bs4 import BeautifulSoup
 import redis
 import requests
 
+import storage
+
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 
 db = redis.StrictRedis.from_url(REDIS_URL, decode_responses=True)
@@ -17,6 +19,7 @@ HEADERS = {"Referer": XDD_ROOT}
 
 def scrap_tv_show(username, password, tv_show):
     session = login(username, password)
+    storage.create_tv_show(tv_show)
     current_season = 1
     current_chapter = 1
     for season_html in find_seasons(session, tv_show):
