@@ -36,8 +36,10 @@ def scrap_tv_show(tv_show):
             process_chapter(a["href"], chapter_db)
             save_status(tv_show, current_season, current_chapter)
             current_chapter += 1
+            db.incr("processed_seasons")
         current_season += 1
         current_chapter = 1
+    db.incr("processed_tv_shows")
     db.set("is_server_busy", "0")
 
 def get_session():
@@ -52,27 +54,43 @@ def save_status(tv_show, current_season, current_chapter):
     db.set("status_" + tv_show, str(current_season) + "-" + str(current_chapter))
 
 def resolve_internal_link(internal_link):
-    request = get_session().get(XDD_ROOT + internal_link, headers=HEADERS)
-    html = BeautifulSoup(request.text, "lxml")
+    try:
+        req = get_session().get(XDD_ROOT + internal_link, headers=HEADERS)
+    except requests.exceptions.RequestException:
+        resolve_internal_link(internal_link)
+    html = BeautifulSoup(req.text, "lxml")
     for link in html.find_all("a", {"class": "episodeText"}, href=True):
-        redirection = get_session().get(XDD_ROOT + link["href"], headers=HEADERS, allow_redirects=False)
-        external_url = redirection.headers.get("Location")
-        if external_url:
-            print("resolve_internal_link(...) " + external_url)
-            return external_url
+        return extract_redirection(link["href"])
+
+def extract_redirection(link):
+    try:
+        req = get_session().get(XDD_ROOT + link, allow_redirects=False, headers=HEADERS)
+    except requests.exceptions.RequestException:
+        extract_redirection(link)
+    external_url = req.headers.get("Location")
+    if external_url is not None:
+        db.incr("processed_links")
+        return external_url
 
 def process_chapter(chapter_link, chapter_db):
-    request = get_session().get(XDD_ROOT + chapter_link, headers=HEADERS)
-    html = BeautifulSoup(request.text, "lxml")
+    try:
+        req = get_session().get(XDD_ROOT + chapter_link, headers=HEADERS)
+    except requests.exceptions.RequestException:
+        process_chapter(chapter_link, chapter_db)
+    html = BeautifulSoup(req.text, "lxml")
     for link in html.find_all("a", {"class": "a aporteLink done"}, href=True):
         external_url = resolve_internal_link(link["href"])
         if external_url is not None:
             chapter_db["mirrors"].append(external_url)
     storage.update_episode(chapter_db)
+    db.incr("processed_chapters")
 
 def find_seasons(tv_show):
-    request = get_session().get(XDD_TV_SHOW_ENDPOINT + tv_show, headers=HEADERS)
-    html = BeautifulSoup(request.text, "lxml")
+    try:
+        req = get_session().get(XDD_TV_SHOW_ENDPOINT + tv_show, headers=HEADERS)
+    except requests.exceptions.RequestException:
+        find_seasons(tv_show)
+    html = BeautifulSoup(req.text, "lxml")
     return html.find_all("div", {"id": re.compile("^episodes-")})
 
 def login_all():
@@ -85,6 +103,9 @@ def login(username, password):
     data = {
         "LoginForm[username]": username,
         "LoginForm[password]": password}
-    session.post(XDD_LOGIN_ENDPOINT, headers=HEADERS, data=data)
+    try:
+        session.post(XDD_LOGIN_ENDPOINT, data=data, headers=HEADERS)
+    except requests.exceptions.RequestException:
+        login(username, password)
     print("xdd_login(...) OK")
     return session
