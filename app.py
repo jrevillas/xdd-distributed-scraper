@@ -6,24 +6,14 @@ import redis
 
 from tasks import scrap_tv_show
 
-XDD_USERNAME = os.environ.get("XDD_USERNAME")
-if XDD_USERNAME == None:
-    print("XDD_USERNAME is not set, exiting...")
-    quit()
-
-XDD_PASSWORD = os.environ.get("XDD_PASSWORD")
-if XDD_PASSWORD == None:
-    print("XDD_PASSWORD is not set, exiting...")
-    quit()
-
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 
 db = redis.StrictRedis.from_url(REDIS_URL, decode_responses=True)
-db.set("is_server_busy", "0")
-db.set("processed_chapters", "0")
-db.set("processed_links", "0")
-db.set("processed_seasons", "0")
-db.set("processed_tv_shows", "0")
+db.set("is_server_busy", 0)
+db.set("processed_chapters", 0)
+db.set("processed_links", 0)
+db.set("processed_seasons", 0)
+db.set("processed_tv_shows", 0)
 
 app = Flask(__name__)
 
@@ -43,10 +33,10 @@ conexiones salientes.
 def job_handler():
     if db.get("is_server_busy") == "1":
         return jsonify(status="busy"), 503
-    db.set("is_server_busy", "1")
+    db.set("is_server_busy", 1)
     t = Thread(
         target=scrap_tv_show,
-        args=[XDD_USERNAME, XDD_PASSWORD, "stargate-atlantis"],
+        args=["riverdale"],
         daemon=True)
     t.start()
     return jsonify(request.get_json())
