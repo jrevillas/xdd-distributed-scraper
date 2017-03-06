@@ -16,6 +16,8 @@ XDD_TV_SHOW_ENDPOINT = XDD_ROOT + "/serie/"
 
 HEADERS = {"Referer": XDD_ROOT}
 
+FLAGS = ["english", "japanese", "spanish"]
+
 sessions = [
     {"username": "pdd-qbg768g", "password": "qbg768g"},
     {"username": "pdd-n6q2kps", "password": "n6q2kps"},
@@ -36,9 +38,9 @@ def scrap_tv_show(tv_show):
             process_chapter(a["href"], chapter_db)
             save_status(tv_show, current_season, current_chapter)
             current_chapter += 1
-            db.incr("processed_seasons")
         current_season += 1
         current_chapter = 1
+        db.incr("processed_seasons")
     db.incr("processed_tv_shows")
     db.set("is_server_busy", "0")
 
@@ -52,6 +54,29 @@ desde AWS Lambda.
 '''
 def save_status(tv_show, current_season, current_chapter):
     db.set("status_" + tv_show, str(current_season) + "-" + str(current_chapter))
+
+def determine_metadata(link_div):
+    metadata = {"audio": None, "subtitles": None}
+    for flag_div in link_div.find_all("div", {"class": "flag"}):
+        metadata["subtitles"] = determine_subtitles(flag_div)
+        if metadata["subtitles"] is None:
+            metadata["audio"] = determine_audio(flag_div)
+    return metadata
+
+def determine_audio(flag_div):
+    if "LAT" in flag_div.get_text():
+        return "latin"
+    language = flag_div.get("class")[-1]
+    if language in FLAGS:
+        return language
+    return "unknown"
+
+def determine_subtitles(flag_div):
+    if "SUB" in flag_div.get_text():
+        language = flag_div.get("class")[-1]
+        if language in FLAGS:
+            return language
+        return "unknown"
 
 def resolve_internal_link(internal_link):
     try:
@@ -81,7 +106,9 @@ def process_chapter(chapter_link, chapter_db):
     for link in html.find_all("a", {"class": "a aporteLink done"}, href=True):
         external_url = resolve_internal_link(link["href"])
         if external_url is not None:
-            chapter_db["mirrors"].append(external_url)
+            mirror = determine_metadata(link)
+            mirror["external_url"] = external_url
+            chapter_db["mirrors"].append(mirror)
     storage.update_episode(chapter_db)
     db.incr("processed_chapters")
 
