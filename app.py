@@ -21,7 +21,7 @@ app = Flask(__name__)
 def index_handler():
     return jsonify(
         application="xdd-distributed-scraper",
-        version="2.0")
+        version="3.0")
 
 '''
 Recibe la informacion necesaria sobre una serie para poder extraer las
@@ -33,13 +33,21 @@ conexiones salientes.
 def job_handler():
     if db.get("is_server_busy") == "1":
         return jsonify(status="busy"), 503
+    payload = request.get_json()
+    if not "tv_show" in payload:
+        return jsonify(error="'tv_show' key is missing"), 400
+    if not "xdd_session" in payload:
+        return jsonify(error="'xdd_session' key is missing"), 400
     db.set("is_server_busy", 1)
     t = Thread(
-        target=scrap_tv_show,
-        args=["riverdale"],
-        daemon=True)
+        args=[payload["tv_show"], payload["xdd_session"]],
+        daemon=True,
+        target=scrap_tv_show)
     t.start()
-    return jsonify(request.get_json())
+    return jsonify(
+        status="submitted",
+        tv_show=payload["tv_show"],
+        xdd_session=payload["xdd_session"])
 
 '''
 Muestra el numero de series, temporadas, capitulos y enlaces que se han

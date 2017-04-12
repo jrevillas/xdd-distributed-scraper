@@ -1,5 +1,4 @@
 import os
-from random import choice
 import re
 
 from bs4 import BeautifulSoup
@@ -14,19 +13,15 @@ XDD_ROOT = "http://www.pordede.com"
 XDD_LOGIN_ENDPOINT = XDD_ROOT + "/site/login"
 XDD_TV_SHOW_ENDPOINT = XDD_ROOT + "/serie/"
 
+COOKIES = {}
 HEADERS = {"Referer": XDD_ROOT}
 
 FLAGS = ["english", "japanese", "spanish"]
 
-sessions = [
-    {"username": "pdd-qbg768g", "password": "qbg768g"},
-    {"username": "pdd-n6q2kps", "password": "n6q2kps"},
-    {"username": "pdd-dg1z8et", "password": "dg1z8et"}]
-
 db = redis.StrictRedis.from_url(REDIS_URL, decode_responses=True)
 
-def scrap_tv_show(tv_show):
-    login_all()
+def scrap_tv_show(tv_show, xdd_session):
+    login(xdd_session)
     storage.get_tv_show(tv_show)
     current_season = 1
     current_chapter = 1
@@ -43,9 +38,6 @@ def scrap_tv_show(tv_show):
         db.incr("processed_seasons")
     db.incr("processed_tv_shows")
     db.set("is_server_busy", "0")
-
-def get_session():
-    return choice(sessions)
 
 '''
 Actualiza el estado de la serie con una referencia al ultimo capitulo que se ha
@@ -80,59 +72,49 @@ def determine_subtitles(flag_div):
 
 def resolve_internal_link(internal_link):
     try:
-        req = get_session().get(XDD_ROOT + internal_link, headers=HEADERS)
+        req = requests.get(XDD_ROOT + internal_link, cookies=COOKIES,
+                           headers=HEADERS)
+        html = BeautifulSoup(req.text, "lxml")
+        for link in html.find_all("a", {"class": "episodeText"}, href=True):
+            return extract_redirection(link["href"])
     except requests.exceptions.RequestException:
         resolve_internal_link(internal_link)
-    html = BeautifulSoup(req.text, "lxml")
-    for link in html.find_all("a", {"class": "episodeText"}, href=True):
-        return extract_redirection(link["href"])
 
 def extract_redirection(link):
     try:
-        req = get_session().get(XDD_ROOT + link, allow_redirects=False, headers=HEADERS)
+        req = requests.get(XDD_ROOT + link, allow_redirects=False,
+                           cookies=COOKIES, headers=HEADERS)
+        external_url = req.headers.get("Location")
+        if external_url is not None:
+            db.incr("processed_links")
+            return external_url
     except requests.exceptions.RequestException:
         extract_redirection(link)
-    external_url = req.headers.get("Location")
-    if external_url is not None:
-        db.incr("processed_links")
-        return external_url
 
 def process_chapter(chapter_link, chapter_db):
     try:
-        req = get_session().get(XDD_ROOT + chapter_link, headers=HEADERS)
+        req = requests.get(XDD_ROOT + chapter_link, cookies=COOKIES,
+                           headers=HEADERS)
+        html = BeautifulSoup(req.text, "lxml")
+        for link in html.find_all("a", {"class": "a aporteLink done"}, href=True):
+            external_url = resolve_internal_link(link["href"])
+            if external_url is not None:
+                mirror = determine_metadata(link)
+                mirror["external_url"] = external_url
+                chapter_db["mirrors"].append(mirror)
+        storage.update_episode(chapter_db)
+        db.incr("processed_chapters")
     except requests.exceptions.RequestException:
         process_chapter(chapter_link, chapter_db)
-    html = BeautifulSoup(req.text, "lxml")
-    for link in html.find_all("a", {"class": "a aporteLink done"}, href=True):
-        external_url = resolve_internal_link(link["href"])
-        if external_url is not None:
-            mirror = determine_metadata(link)
-            mirror["external_url"] = external_url
-            chapter_db["mirrors"].append(mirror)
-    storage.update_episode(chapter_db)
-    db.incr("processed_chapters")
 
 def find_seasons(tv_show):
     try:
-        req = get_session().get(XDD_TV_SHOW_ENDPOINT + tv_show, headers=HEADERS)
+        req = requests.get(XDD_TV_SHOW_ENDPOINT + tv_show, cookies=COOKIES,
+                           headers=HEADERS)
+        html = BeautifulSoup(req.text, "lxml")
+        return html.find_all("div", {"id": re.compile("^episodes-")})
     except requests.exceptions.RequestException:
         find_seasons(tv_show)
-    html = BeautifulSoup(req.text, "lxml")
-    return html.find_all("div", {"id": re.compile("^episodes-")})
 
-def login_all():
-    for idx, item in enumerate(sessions):
-        if not isinstance(item, requests.sessions.Session):
-            sessions[idx] = login(item["username"], item["password"])
-
-def login(username, password):
-    session = requests.Session()
-    data = {
-        "LoginForm[username]": username,
-        "LoginForm[password]": password}
-    try:
-        session.post(XDD_LOGIN_ENDPOINT, data=data, headers=HEADERS)
-    except requests.exceptions.RequestException:
-        login(username, password)
-    print("xdd_login(...) OK")
-    return session
+def login(xdd_session):
+    COOKIES["PHPSESSID"] = xdd_session
