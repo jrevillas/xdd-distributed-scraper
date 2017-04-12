@@ -17,6 +17,13 @@ db.set("processed_tv_shows", 0)
 
 app = Flask(__name__)
 
+@app.route("/tv-show/<tv_show>/s<season>e<episode>")
+def episode_handler(tv_show, season, episode):
+    return jsonify(
+        episode=episode,
+        season=season,
+        tv_show=tv_show)
+
 @app.route("/")
 def index_handler():
     return jsonify(
@@ -49,6 +56,16 @@ def job_handler():
         tv_show=payload["tv_show"],
         xdd_session=payload["xdd_session"])
 
+@app.route("/mirror/<mirror>")
+def mirror_handler(mirror):
+    return jsonify(mirror=mirror)
+
+@app.route("/tv-show/<tv_show>/s<season>")
+def season_handler(tv_show, season):
+    return jsonify(
+        season=season,
+        tv_show=tv_show)
+
 '''
 Muestra el numero de series, temporadas, capitulos y enlaces que se han
 procesado desde el arranque de la aplicacion.
@@ -60,6 +77,10 @@ def stats_handler():
         processed_links=int(db.get("processed_links")),
         processed_seasons=int(db.get("processed_seasons")),
         processed_tv_shows=int(db.get("processed_tv_shows")))
+
+@app.route("/tv-show/<tv_show>")
+def tv_show_handler(tv_show):
+    return jsonify(tv_show=tv_show)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
