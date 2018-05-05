@@ -2,6 +2,7 @@ import os
 import re
 
 from bs4 import BeautifulSoup
+import cfscrape
 import redis
 import requests
 
@@ -19,6 +20,7 @@ HEADERS = {"Referer": XDD_ROOT}
 FLAGS = ["english", "japanese", "spanish"]
 
 db = redis.StrictRedis.from_url(REDIS_URL, decode_responses=True)
+scraper = cfscrape.create_scraper()
 
 def scrap_tv_show(tv_show, xdd_session):
     login(xdd_session)
@@ -72,7 +74,7 @@ def determine_subtitles(flag_div):
 
 def resolve_internal_link(internal_link):
     try:
-        req = requests.get(XDD_ROOT + internal_link, cookies=COOKIES,
+        req = scraper.get(XDD_ROOT + internal_link, cookies=COOKIES,
                            headers=HEADERS)
         html = BeautifulSoup(req.text, "lxml")
         for link in html.find_all("a", {"class": "episodeText"}, href=True):
@@ -82,7 +84,7 @@ def resolve_internal_link(internal_link):
 
 def extract_redirection(link):
     try:
-        req = requests.get(XDD_ROOT + link, allow_redirects=False,
+        req = scraper.get(XDD_ROOT + link, allow_redirects=False,
                            cookies=COOKIES, headers=HEADERS)
         external_url = req.headers.get("Location")
         if external_url is not None:
@@ -93,7 +95,7 @@ def extract_redirection(link):
 
 def process_chapter(chapter_link, chapter_db):
     try:
-        req = requests.get(XDD_ROOT + chapter_link, cookies=COOKIES,
+        req = scraper.get(XDD_ROOT + chapter_link, cookies=COOKIES,
                            headers=HEADERS)
         html = BeautifulSoup(req.text, "lxml")
         for link in html.find_all("a", {"class": "a aporteLink done"}, href=True):
@@ -109,7 +111,7 @@ def process_chapter(chapter_link, chapter_db):
 
 def find_seasons(tv_show):
     try:
-        req = requests.get(XDD_TV_SHOW_ENDPOINT + tv_show, cookies=COOKIES,
+        req = scraper.get(XDD_TV_SHOW_ENDPOINT + tv_show, cookies=COOKIES,
                            headers=HEADERS)
         html = BeautifulSoup(req.text, "lxml")
         return html.find_all("div", {"id": re.compile("^episodes-")})
