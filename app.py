@@ -36,7 +36,7 @@ temporadas, capitulos y enlaces de los mismos. Cuando recibe una peticion valida
 cambia el estado del servicio a ocupado para evitar que se dispare el numero de
 conexiones salientes.
 '''
-@app.route("/job", methods=['POST'])
+@app.route("/job", methods=["POST"])
 def job_handler():
     if db.get("is_server_busy") == "1":
         return jsonify(status="busy"), 503
