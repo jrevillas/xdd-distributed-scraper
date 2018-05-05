@@ -3,4 +3,4 @@ WORKDIR /usr/src/app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-CMD [ "python", "scrape_tv_show.py" ]
+CMD [ "python", "scrap_tv_show.py" ]
