@@ -6,7 +6,22 @@ spec:
   backoffLimit: 4
   spec:
     containers:
-    - command: [ "python", "scrap_tv_show" ]
-      image: xdd-distributed-scraper
+    - command: [ "python", "scrap_tv_show.py" ]
+      env:
+      - name: MONGODB_DATABASE
+        valueFrom:
+          secretKeyRef:
+            key: MONGODB_DATABASE
+            name: xdd-distributed-scraper
+      - name: MONGODB_URI
+        valueFrom:
+          secretKeyRef:
+            key: MONGODB_URI
+            name: xdd-distributed-scraper
+      - name: TV_SHOW
+        value: "over-the-garden-wall"
+      - name: XDD_SESSION
+        value: "..."
+      image: jrevillas/xdd-distributed-scraper
       name: xdd-distributed-scraper
     restartPolicy: Never
