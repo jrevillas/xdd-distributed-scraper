@@ -1,0 +1,12 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: xdd-over-the-garden-wall
+spec:
+  backoffLimit: 4
+  spec:
+    containers:
+    - command: [ "python", "scrap_tv_show" ]
+      image: xdd-distributed-scraper
+      name: xdd-distributed-scraper
+    restartPolicy: Never
